@@ -21,17 +21,20 @@ public class KeyWordSearch {
 	@RequestMapping("/search/{keyword}")
 	public List<Item> getItemsByKeyWord(@PathVariable String keyword){
 		
+		List<Item> itemList = new ArrayList<Item>();
 		List<Items>  itemsList = searchItem.searchItemByKeyword(keyword);
 		
-		List<Item> itemList = new ArrayList<Item>();
-		
-		for(Items items: itemsList){
-			for (Item item: items.getItem()) {
+		itemsList.stream().forEach( items ->{
+			items.getItem().stream().forEach(item -> {
 				itemList.add(item);
-			}
-		}
-		
+			});
+		});
 		return itemList;
+	}
+	
+	@RequestMapping("/search/byId/{idType}/{id}")
+	public Item searchById(@PathVariable String idType, @PathVariable String id){
+		return searchItem.searchById(idType, id);
 	}
 
 }

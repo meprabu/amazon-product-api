@@ -21,6 +21,8 @@ import org.w3c.dom.Node;
 
 import com.amazon.product.api.amazonassosiate.SignedRequestsHelper;
 import com.amazon.product.api.amazonassosiate.generated.Items;
+import com.amazon.product.api.amazonassosiate.generated.Item;
+import com.amazon.product.api.amazonassosiate.generated.ItemLookupResponse;
 import com.amazon.product.api.amazonassosiate.generated.ItemSearchResponse;
 import com.amazon.product.api.amazonassosiate.service.SearchItem;
 
@@ -29,13 +31,14 @@ public class SearchItemDao implements SearchItem{
 	
 	@Autowired
 	private RestTemplate restTemplate;
+	
 	@Value("${AMAZON_ENDPOINT}")
 	private String AMAZON_ENDPOINT;
 	@Value("${AWS_ACCESS_KEY_ID}")
 	private String AWS_ACCESS_KEY_ID;
 	@Value("${AWS_SECRET_KEY}")
 	private String AWS_SECRET_KEY;
-	@Value("$AssociateTag")
+	@Value("${ASSOCIATE_TAG}")
 	private String AssociateTag;
 	
 	@Override
@@ -43,7 +46,6 @@ public class SearchItemDao implements SearchItem{
 		
 		 	ItemSearchResponse response = null;
 		 	URI uri = getURI(getSignedUrl(keyword));
-	        RestTemplate restTemplate = new RestTemplate();
 	        try {
 	            response = restTemplate.getForObject(uri, ItemSearchResponse.class);
 	          } catch (RestClientException e) {
@@ -51,6 +53,48 @@ public class SearchItemDao implements SearchItem{
 	          }
 	         return response.getItems();
 	}
+	
+	
+	@Override
+	public Item searchById(String idType, String id){
+		ItemLookupResponse response = null;
+		URI uri = getURI(getSignedUrlForIdSearch(idType, id));
+		 try {
+	            response = restTemplate.getForObject(uri, ItemLookupResponse.class);
+	          } catch (RestClientException e) {
+	        	  response = new ItemLookupResponse();
+	          }
+	         Items items = response.getItems().get(0);
+	         return items.getItem().get(0);
+	}
+	
+	private String getSignedUrlForIdSearch(String IdType, String ItemId){
+	    String requestUrl = null;
+	    
+	    SignedRequestsHelper helper;
+
+        try {
+            helper = SignedRequestsHelper.getInstance(AMAZON_ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_KEY);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ""; 
+        }
+
+        Map<String, String> params = new HashMap<String, String>();
+        params.put("Service", "AWSECommerceService");
+        params.put("Operation", "ItemLookup");
+        params.put("AWSAccessKeyId", AWS_ACCESS_KEY_ID);
+        params.put("AssociateTag", AssociateTag);
+        params.put("IdType", IdType);
+        params.put("ItemId", ItemId);
+        params.put("ResponseGroup", "Accessories,Images,ItemAttributes,ItemIds,Offers,OfferFull,Reviews,SalesRank");
+
+        requestUrl = helper.sign(params);
+
+        System.out.println("Signed URL: \"" + requestUrl + "\"");
+        
+        return requestUrl;
+}
 	
 	
 	private String getSignedUrl(String keyword){
@@ -72,7 +116,7 @@ public class SearchItemDao implements SearchItem{
 	        params.put("AssociateTag", AssociateTag);
 	        params.put("SearchIndex", "All");
 	        params.put("Keywords", keyword);
-	        params.put("ResponseGroup", "Images,ItemAttributes,Offers");
+	        params.put("ResponseGroup", "Images,ItemAttributes,ItemIds,OfferSummary,Reviews");
 
 	        requestUrl = helper.sign(params);
 
